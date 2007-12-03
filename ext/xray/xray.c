@@ -91,36 +91,32 @@ static VALUE xray_backtrace(VALUE self)
   print_thread_info(th);
   ary = frame_backtrace(th2->frame, -1);
 
-//  for (th2 = th->next; th2 && th2 != th; th2 = th2->next) {
-//    print_thread_info(th2);
-//  }
-   
   return ary;  
 }
 
 
-static VALUE xray_dump_all_threads(VALUE self)
+VALUE rb_xray_dump_all_threads()
 {
   NODE *node;
   struct FRAME *frame;
-  VALUE ary;
   rb_thread_t th;
   rb_thread_t th2;
-
-  Check_Type(self, T_DATA);
-  th = (rb_thread_t) DATA_PTR(self);
+  VALUE current_thread;
+  
+  current_thread = rb_thread_current();
+  Check_Type(current_thread, T_DATA);
+  th = (rb_thread_t) DATA_PTR(current_thread);
 
   print_thread_info(th);
   for (th2 = th->next; th2 && th2 != th; th2 = th2->next) {
     print_thread_info(th2);
   }
    
-  ary = rb_ary_new();
-  return ary;  
+  return Qnil;  
 }
 
 void Init_xray() {
   rb_define_method(rb_cThread, "xray_backtrace", xray_backtrace, 0);
-  rb_define_method(rb_cThread, "xray_dump_all_threads", xray_backtrace, 0);
+  rb_define_singleton_method(rb_cThread, "xray_dump_all_threads", rb_xray_dump_all_threads, 0);
 }
 
