@@ -56,8 +56,8 @@ specification = Gem::Specification.new do |s|
   s.homepage = "http://xray.rubyforge.com"
   s.rubyforge_project = 'flipper'
   s.platform = Gem::Platform::RUBY
-  s.files = ["ext/xray/xray.c", "ext/xray/extconf.rb"] + FileList['test/**/*.rb']
-  s.require_path = "."
+  s.files = ["ext/xray/xray.c", "ext/xray/extconf.rb"] + FileList['lib/**/*.rb'] + FileList['test/**/*.rb']
+  s.require_path = "lib"
   # s.autorequire = "MenuBuilder"
   s.extensions = ["ext/xray/extconf.rb"]
   s.rdoc_options << '--title' << 'Flipper' << '--main' << 'README' << '--line-numbers'
