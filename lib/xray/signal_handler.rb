@@ -5,10 +5,7 @@ module XRay
     STDERR.puts "Current Thread\n    "
     STDERR.puts Thread.current.xray_backtrace.join("\n    \_ ")
     STDERR.puts "----------------------------------------------"
-    Thread.list.each_with_index do |t,i| 
-      STDERR.puts "Dumping Thread #{i}\n    "
-      t.xray_backtrace.join("\n    \_ ")
-    end
+    STDERR.puts Thread.list.inspect
     STDERR.puts "=============================================="
     STDERR.flush
   end

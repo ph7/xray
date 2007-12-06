@@ -54,13 +54,13 @@ specification = Gem::Specification.new do |s|
   s.author = "Philippe Hanrigou"
 	s.email = 'xray-developer@rubyforge.org'
   s.homepage = "http://xray.rubyforge.com"
-  s.rubyforge_project = 'flipper'
+  s.rubyforge_project = 'xray'
   s.platform = Gem::Platform::RUBY
   s.files = ["ext/xray/xray.c", "ext/xray/extconf.rb"] + FileList['lib/**/*.rb'] + FileList['test/**/*.rb']
   s.require_path = "lib"
   # s.autorequire = "MenuBuilder"
   s.extensions = ["ext/xray/extconf.rb"]
-  s.rdoc_options << '--title' << 'Flipper' << '--main' << 'README' << '--line-numbers'
+  s.rdoc_options << '--title' << 'XRay' << '--main' << 'README' << '--line-numbers'
   s.has_rdoc = true
   s.extra_rdoc_files = ['README']
 	s.test_file = "test/all_tests.rb"

@@ -1,7 +1,6 @@
 #include "ruby.h"
 #include "node.h"
 #include "env.h"
-//#include "st.h"
 
 static int id_push;
 
@@ -12,6 +11,7 @@ static VALUE frame_backtrace(struct FRAME *frame, int lev)
     VALUE ary;
     NODE *n;
 
+    frame = ruby_frame; // Does not seem to work if we start from any other frame :-(
     ary = rb_ary_new();
     if (NULL == frame) { return ary; }
 
@@ -47,19 +47,19 @@ static VALUE frame_backtrace(struct FRAME *frame, int lev)
    }
 
    printf("Entering for loop frame=%d\n", frame);
-//   for (; frame && (n = frame->node); frame = frame->prev) {
-//       if (frame->prev && frame->prev->last_func) {
- //          if (frame->prev->node == n) {
-  //             if (frame->prev->last_func == frame->last_func) continue;
-//           }
-//           snprintf(buf, BUFSIZ, "%s:%d:in `%s'",
-//               n->nd_file, nd_line(n),
-//               rb_id2name(frame->prev->last_func));
-//       } else {
-//           snprintf(buf, BUFSIZ, "%s:%d", n->nd_file, nd_line(n));
-//       }
-//       rb_ary_push(ary, rb_str_new2(buf));
-//    }
+   for (; frame && (n = frame->node); frame = frame->prev) {
+       if (frame->prev && frame->prev->last_func) {
+           if (frame->prev->node == n) {
+               if (frame->prev->last_func == frame->last_func) continue;
+           }
+           snprintf(buf, BUFSIZ, "%s:%d:in `%s'",
+               n->nd_file, nd_line(n),
+               rb_id2name(frame->prev->last_func));
+       } else {
+           snprintf(buf, BUFSIZ, "%s:%d", n->nd_file, nd_line(n));
+       }
+       rb_ary_push(ary, rb_str_new2(buf));
+    }
 
    return ary;
 }
@@ -89,7 +89,8 @@ static VALUE xray_backtrace(VALUE self)
   th = (rb_thread_t) DATA_PTR(self);
 
   print_thread_info(th);
-  ary = frame_backtrace(th2->frame, -1);
+
+  ary = frame_backtrace(th->frame, -1);
 
   return ary;  
 }
