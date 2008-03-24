@@ -1,8 +1,6 @@
-$: << File.dirname(__FILE__) + '/../ext/xray'
-require 'test/unit'
-require 'xray'
+require File.expand_path(__FILE__ + '/../test_helper')
 
-class ThreadTest < Test::Unit::TestCase
+functional_tests do
 
   def test_xray_dump_all_thread_does_not_coredump_with_one_thread
     Thread.xray_dump_all_threads
@@ -25,7 +23,7 @@ class ThreadTest < Test::Unit::TestCase
   def test_xray_backtrace_is_meaningful_for_current_thread_when_there_is_more_than_one_thread
     another_thread = Thread.new { sleep 4 }
     the_backtrace = Thread.current.xray_backtrace[0]
-    assert_equal __FILE__ + ":27", the_backtrace
+    assert_equal __FILE__ + ":25", the_backtrace
     another_thread.join
   end
 
