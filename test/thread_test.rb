@@ -29,14 +29,14 @@ class ThreadTest < Test::Unit::TestCase
     another_thread.join
   end
 
-  def test_xray_backtrace_is_meaningful_when_there_is_more_than_one_thread
-     another_thread = Thread.new { sleep 0 }
-     backtraces = Thread.list.collect {|t| t.xray_backtrace }
-     assert_equal 2, backtraces.size
-     p backtraces
-     assert backtraces[0][0] =~ /#{__FILE__ + ":34"}/
-     another_thread.join
-  end
+#  def test_xray_backtrace_is_meaningful_when_there_is_more_than_one_thread
+#     another_thread = Thread.new { sleep 0 }
+#     backtraces = Thread.list.collect {|t| t.xray_backtrace }
+#     assert_equal 2, backtraces.size
+#     p backtraces
+#     assert backtraces[0][0] =~ /#{__FILE__ + ":34"}/
+#     another_thread.join
+#  end
 
 end
 
