@@ -115,7 +115,7 @@ VALUE rb_xray_dump_all_threads()
   return Qnil;  
 }
 
-void Init_xray() {
+void Init_xray_native() {
   rb_define_method(rb_cThread, "xray_backtrace", xray_backtrace, 0);
   rb_define_singleton_method(rb_cThread, "xray_dump_all_threads", rb_xray_dump_all_threads, 0);
 }
