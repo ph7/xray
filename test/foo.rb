@@ -1,5 +1,5 @@
 $: << File.dirname(__FILE__) + '/../ext/xray'
-require 'xray'
+require 'xray_native'
 
 Thread.new do
   sleep 30
