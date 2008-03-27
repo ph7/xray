@@ -1,5 +1,5 @@
 $: << File.dirname(__FILE__) + '/../ext/xray'
-require 'xray'
+require 'xray_native'
 
 Thread.new do
   sleep 30
@@ -12,5 +12,5 @@ p Thread.current.priority
 puts "##### Current backtrace"
 p Thread.current.xray_backtrace
 puts "##### All backtraces"
-p Thread.list.collect {|t| t.xray_backtrace }
+# BUS ERROR # p Thread.list.collect {|t| t.xray_backtrace }
 

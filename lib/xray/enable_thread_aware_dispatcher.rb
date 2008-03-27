@@ -1,0 +1,1 @@
+Dispatcher.send :include, XRay::ThreadAwareDispatcher
