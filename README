@@ -1,1 +1,12 @@
-Not useful yet. Work in progress. 
+XRay provides a lightweight yet powerful toolbox for troubleshooting Ruby
+applications when things stop making sense. Includes GDB and DTrace tooling.
+
+GDB
+===
+
+Copy +gdb_macros+ file provided in the gem as your ~/.gdbinit file.
+
+DTrace
+======
+
+See XRay::DTrace::Tracer
