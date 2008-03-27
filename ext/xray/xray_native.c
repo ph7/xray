@@ -1,76 +1,7 @@
 #include "ruby.h"
 #include "node.h"
 #include "env.h"
-
-
 #include "ruby.h"
-
-#define ENABLE_DTRACE 1
-
-#ifdef ENABLE_DTRACE
-#include "dtrace.h"
-#endif
-
-VALUE rb_mXRay;
-VALUE rb_mXRayDTrace;
-VALUE rb_mXRayDTraceTracer;
-
-static VALUE
-ruby_dtrace_fire(argc, argv, klass)
-  int argc;
-  VALUE *argv;
-  VALUE klass;
-{
-	int args;
-	VALUE name, data, ret;
-	char *probe_data;
-	char *probe_name;
-	char *start_probe;
-	char *end_probe;
-	
-#ifdef ENABLE_DTRACE
-
-	args = rb_scan_args(argc, argv, "11", &name, &data);
-	probe_data = args == 2 ? StringValuePtr(data) : "";
-	probe_name = StringValuePtr(name);
-
-    if (rb_block_given_p()) {
-		start_probe = malloc(strlen(probe_name) + 7);
-		end_probe   = malloc(strlen(probe_name) + 5);
-		
-		sprintf(start_probe, "%s-start", probe_name);
-		sprintf(end_probe, "%s-end", probe_name);
-		
-		/* Build -start and -end strings for probe names */
-		printf("RUBY PROBE ENABLED %d\n", RUBY_RUBY_PROBE_ENABLED());
-		if (RUBY_RUBY_PROBE_ENABLED()) {
-			RUBY_RUBY_PROBE(start_probe, probe_data);
-		}
-#endif
-	
-		ret = rb_yield(Qnil);
-	
-#if ENABLE_DTRACE
-
-		printf("RUBY PROBE ENABLED %d\n", RUBY_RUBY_PROBE_ENABLED());
-		if (RUBY_RUBY_PROBE_ENABLED()) {
-			RUBY_RUBY_PROBE(end_probe, probe_data);
-		}
-		
-		free(start_probe);
-		free(end_probe);
-    } else {
-		if (RUBY_RUBY_PROBE_ENABLED()) {
-			RUBY_RUBY_PROBE(probe_name, probe_data);
-		}
-		
-		ret = Qnil;
-	}
-#endif
-
-    return ret;
-}
-
 
 static VALUE frame_backtrace(struct FRAME *frame, int lev)
 {
@@ -184,9 +115,4 @@ VALUE rb_xray_dump_all_threads()
 void Init_xray_native() {
    rb_define_method(rb_cThread, "xray_backtrace", xray_backtrace, 0);
    rb_define_singleton_method(rb_cThread, "xray_dump_all_threads", rb_xray_dump_all_threads, 0);
-
-   rb_mXRay = rb_define_module("XRay");
-   rb_mXRayDTrace = rb_define_module_under(rb_mXRay, "DTrace");
-   rb_mXRayDTraceTracer = rb_define_module_under(rb_mXRayDTrace, "Tracer");
-   rb_define_module_function(rb_mXRayDTraceTracer, "firing", ruby_dtrace_fire, -1);
 }
