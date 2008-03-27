@@ -1,15 +1,14 @@
-$: << File.dirname(__FILE__) + '/../../ext/xray'
 $: << File.dirname(__FILE__) + '/../../lib'
-require 'xray/xray'
+require 'xray/dtrace/tracer'
 
 class Service
-  include DTracer
+  include XRay::DTrace::Tracer
   
   def process
     puts "Processing new request"
-    fire "my-service-start", "a sql query"
-    sleep 2
-    fire "my-service-end", "a sql query"
+    firing "my-service-start", "a sql query" do
+      sleep 2
+    end
   end
   
 end
