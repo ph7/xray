@@ -7,6 +7,6 @@
 *.so
 .svn
 ext/xray/Makefile
-ext/xray/xray.bundle
-ext/xray/xray.o
+*.bundle
+*.o
 pkg
