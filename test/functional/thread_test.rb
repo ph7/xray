@@ -1,4 +1,4 @@
-require File.expand_path(__FILE__ + '/../test_helper')
+require File.expand_path(__FILE__ + '/../../test_helper')
 
 functional_tests do
 
