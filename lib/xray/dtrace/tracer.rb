@@ -4,7 +4,7 @@ module XRay
     module Tracer
       
       if Object.const_defined?(:DTracer)    ### Leopard tracer ###
-        
+
         def fire(name, data = nil)
           DTracer.fire(name, data)
         end

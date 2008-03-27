@@ -43,7 +43,7 @@ specification = Gem::Specification.new do |s|
   s.platform = Gem::Platform::RUBY
   s.files = FileList['lib/**/*.rb'] + FileList['test/**/*.rb']
   s.require_path = "lib"
-  s.extensions = ["ext/xray/extconf.rb"]
+  s.extensions = []
   s.rdoc_options << '--title' << 'XRay' << '--main' << 'README' << '--line-numbers'
   s.has_rdoc = true
   s.extra_rdoc_files = ['README']
