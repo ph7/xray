@@ -42,8 +42,8 @@ ruby_dtrace_fire(argc, argv, klass)
 		sprintf(end_probe, "%s-end", probe_name);
 		
 		/* Build -start and -end strings for probe names */
+		printf("RUBY PROBE ENABLED %d\n", RUBY_RUBY_PROBE_ENABLED());
 		if (RUBY_RUBY_PROBE_ENABLED()) {
-			printf(">>>> RUBY PROBE ENABLED\n");
 			RUBY_RUBY_PROBE(start_probe, probe_data);
 		}
 #endif
@@ -52,6 +52,7 @@ ruby_dtrace_fire(argc, argv, klass)
 	
 #if ENABLE_DTRACE
 
+		printf("RUBY PROBE ENABLED %d\n", RUBY_RUBY_PROBE_ENABLED());
 		if (RUBY_RUBY_PROBE_ENABLED()) {
 			RUBY_RUBY_PROBE(end_probe, probe_data);
 		}
@@ -60,7 +61,6 @@ ruby_dtrace_fire(argc, argv, klass)
 		free(end_probe);
     } else {
 		if (RUBY_RUBY_PROBE_ENABLED()) {
-			printf(">>>> RUBY PROBE ENABLED\n");
 			RUBY_RUBY_PROBE(probe_name, probe_data);
 		}
 		
