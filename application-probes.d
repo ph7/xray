@@ -1,4 +1,4 @@
 ruby$target:::ruby-probe
 {
-	printf("cpu: %d - %s '%s'", cpu, copyinstr(arg0), copyinstr(arg1))
+	printf("%d cpu: %d - %s '%s'", timestamp, cpu, copyinstr(arg0), copyinstr(arg1))
 }
