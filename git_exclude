@@ -10,3 +10,4 @@ ext/xray/Makefile
 *.bundle
 *.o
 pkg
+rdoc

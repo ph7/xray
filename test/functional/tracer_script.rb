@@ -6,7 +6,7 @@ class Service
   
   def process
     puts "Processing new request"
-    firing "my-service-start", "a sql query" do
+    firing "my-service", "a sql query" do
       sleep 2
     end
   end
