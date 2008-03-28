@@ -1,7 +1,9 @@
 ActionController::Base.class_eval do
-            
+
+  include XRay::DTrace::Tracer
+  
   def perform_action_with_tracing
-    XRay::DTrace::Tracer.firing('request', "#{self.class.to_s}##{action_name.to_s}") do
+    firing('request', "#{self.class.to_s}##{action_name.to_s}") do
        perform_action_without_tracing
     end
   end
