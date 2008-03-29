@@ -1,12 +1,34 @@
 XRay provides a lightweight yet powerful toolbox for troubleshooting Ruby
 applications when things stop making sense. Includes GDB and DTrace tooling.
 
-GDB
-===
+*** GDB ***
 
-Copy +gdb_macros+ file provided in the gem as your ~/.gdbinit file.
 
-DTrace
-======
+  Copy +gdb_macros+ file provided in the gem as your ~/.gdbinit file.
 
-See XRay::DTrace::Tracer
+*** Fire DTrace Application Probes ***
+
+  See XRay::DTrace::Tracer
+
+*** Out-of-the-box Rails DTrace Instrumentation ***
+
+  You are one require away from triggering automatically DTrace events for 
+  Rails requests, database access and template rendering. As simple as 
+
+     # environment.rb
+     Rails::Initializer.run do |config|
+
+       ...
+
+       config.after_initialize do
+         require "xray/dtrace/rails/enable_tracing"
+       end  
+     end
+ 
+  See 
+   * lib/xray/dtrace/railsenable_tracing.rb
+   * lib/xray/dtrace/action_controller_tracing_extension.rb
+   * lib/xray/dtrace/active_record_tracing_extension.rb
+
+
+
