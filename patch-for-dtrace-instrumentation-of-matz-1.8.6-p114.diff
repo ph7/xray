@@ -1,0 +1,506 @@
+Index: Makefile.in
+===================================================================
+--- Makefile.in	(revision 16089)
++++ Makefile.in	(working copy)
+@@ -86,6 +86,8 @@
+ OBJEXT        = @OBJEXT@
+ MANTYPE	      = @MANTYPE@
+ 
++DTRACE_HEADER   = @DTRACE_HEADER@
++
+ INSTALLED_LIST= .installed.list
+ #### End of variables
+ 
+@@ -171,8 +173,11 @@
+ 	$(AS) $(ASFLAGS) -o $@ $<
+ 
+ clean-local::
+-	@$(RM) ext/extinit.c ext/extinit.$(OBJEXT)
++	@$(RM) ext/extinit.c ext/extinit.$(OBJEXT) $(DTRACE_HEADER)
+ 
++dtrace.h: dtrace.d
++	/usr/sbin/dtrace -h -s dtrace.d
++
+ distclean-local::
+ 	@$(RM) ext/config.cache $(RBCONFIG)
+ 
+Index: configure.in
+===================================================================
+--- configure.in	(revision 16089)
++++ configure.in	(working copy)
+@@ -488,6 +488,11 @@
+ 		 sys/mkdev.h sys/utime.h netinet/in_systm.h float.h ieeefp.h pthread.h \
+ 		 ucontext.h intrinsics.h)
+ 
++AC_CHECK_HEADER(sys/sdt.h)
++if test "$ac_cv_header_sys_sdt_h" == "yes"; then
++	AC_DEFINE(HAVE_SDT_H)
++fi
++
+ dnl Check additional types.
+ AC_CHECK_SIZEOF(rlim_t, 0, [
+   #ifdef HAVE_SYS_TYPES_H
+@@ -547,6 +552,18 @@
+     AC_DEFINE(USE_SETREUID)
+     AC_DEFINE(USE_SETREGID)
+ fi
++
++AC_ARG_ENABLE(dtrace,
++	[  --enable-dtrace         enable DTrace support.],
++	[enable_dtrace=$enableval])
++if test "$enable_dtrace" == "yes" -a "$ac_cv_header_sys_sdt_h" == "yes"; then
++	AC_DEFINE(ENABLE_DTRACE)
++    DTRACE_HEADER="dtrace.h"
++else
++    DTRACE_HEADER=""
++fi
++AC_SUBST(DTRACE_HEADER)
++
+ AC_STRUCT_TIMEZONE
+ AC_CACHE_CHECK(for struct tm.tm_gmtoff, rb_cv_member_struct_tm_tm_gmtoff,
+   [AC_TRY_COMPILE([#include <time.h>],
+Index: inits.c
+===================================================================
+--- inits.c	(revision 16089)
++++ inits.c	(working copy)
+@@ -45,6 +45,7 @@
+ void Init_Time _((void));
+ void Init_var_tables _((void));
+ void Init_version _((void));
++void Init_Tracer _((void));
+ 
+ void
+ rb_call_inits()
+@@ -81,4 +82,5 @@
+     Init_GC();
+     Init_marshal();
+     Init_version();
++    Init_Tracer();
+ }
+Index: object.c
+===================================================================
+--- object.c	(revision 16089)
++++ object.c	(working copy)
+@@ -19,6 +19,10 @@
+ #include <errno.h>
+ #include <ctype.h>
+ #include <math.h>
++#ifdef ENABLE_DTRACE
++#include "dtrace.h"
++#include "node.h"
++#endif
+ 
+ VALUE rb_mKernel;
+ VALUE rb_cObject;
+@@ -1553,7 +1557,24 @@
+     if (FL_TEST(klass, FL_SINGLETON)) {
+ 	rb_raise(rb_eTypeError, "can't create instance of virtual class");
+     }
++
++#ifdef ENABLE_DTRACE
++    if (RUBY_OBJECT_CREATE_START_ENABLED()) {
++        char *file = ruby_current_node == NULL ? "" : ruby_current_node->nd_file;
++        int   line = ruby_current_node == NULL ? 0  : nd_line(ruby_current_node);
++	    RUBY_OBJECT_CREATE_START(rb_class2name(klass), file, line);
++    }
++#endif
+     obj = rb_funcall(klass, ID_ALLOCATOR, 0, 0);
++
++#ifdef ENABLE_DTRACE
++    if (RUBY_OBJECT_CREATE_DONE_ENABLED()) {
++	    char *file = ruby_current_node == NULL ? "" : ruby_current_node->nd_file;
++	    int   line = ruby_current_node == NULL ? 0  : nd_line(ruby_current_node);
++	    RUBY_OBJECT_CREATE_DONE(rb_class2name(klass), file, line);
++    }
++#endif
++
+     if (rb_obj_class(obj) != rb_class_real(klass)) {
+ 	rb_raise(rb_eTypeError, "wrong instance allocation");
+     }
+Index: tracer.c
+===================================================================
+--- tracer.c	(revision 0)
++++ tracer.c	(revision 0)
+@@ -0,0 +1,63 @@
++#include "ruby.h"
++
++#ifdef ENABLE_DTRACE
++#include "dtrace.h"
++#endif
++
++VALUE rb_mDtrace;
++
++static VALUE
++ruby_dtrace_fire(argc, argv, klass)
++  int argc;
++  VALUE *argv;
++  VALUE klass;
++{
++	int args;
++	VALUE name, data, ret;
++	char *probe_data;
++	char *probe_name;
++	char *start_probe;
++	char *end_probe;
++	
++	#ifdef ENABLE_DTRACE
++
++	args = rb_scan_args(argc, argv, "11", &name, &data);
++	probe_data = args == 2 ? StringValuePtr(data) : "";
++	probe_name = StringValuePtr(name);
++
++    	if (rb_block_given_p()) {
++		start_probe = malloc(strlen(probe_name) + 7);
++		end_probe   = malloc(strlen(probe_name) + 5);
++		
++		sprintf(start_probe, "%s-start", probe_name);
++		sprintf(end_probe, "%s-end", probe_name);
++		
++		/* Build -start and -end strings for probe names */
++		if (RUBY_RUBY_PROBE_ENABLED())
++			RUBY_RUBY_PROBE(start_probe, probe_data);
++	#endif
++	
++		ret = rb_yield(Qnil);
++	
++	#if ENABLE_DTRACE
++
++		if (RUBY_RUBY_PROBE_ENABLED())
++			RUBY_RUBY_PROBE(end_probe, probe_data);
++		
++		free(start_probe);
++		free(end_probe);
++    	} else {
++		if (RUBY_RUBY_PROBE_ENABLED())
++			RUBY_RUBY_PROBE(probe_name, probe_data);
++		ret = Qnil;
++	}
++	#endif
++    	return ret;
++}
++
++
++void Init_Tracer()
++{
++	rb_mDtrace = rb_define_module("Tracer");
++	rb_define_module_function(rb_mDtrace, "fire", ruby_dtrace_fire, -1);
++}
+Index: dtrace.d
+===================================================================
+--- dtrace.d	(revision 0)
++++ dtrace.d	(revision 0)
+@@ -0,0 +1,26 @@
++/* -*- Mode: C -*- */
++
++provider ruby {
++    probe function__entry(char*, char*, char*, int);
++    probe function__return(char*, char*, char*, int);
++    probe raise(char*, char*, int);
++    probe rescue(char*, int);
++    probe line(char*, int);
++
++    /* gc probes */
++    probe gc__begin();
++    probe gc__end();
++
++    /* Some initial memory type probes */
++    probe object__create__start(char*, char*, int);
++    probe object__create__done(char*, char*, int);
++    probe object__free(char*);
++
++    probe ruby__probe(char*, char*);
++};
++
++#pragma D attributes Evolving/Evolving/Common provider ruby provider
++#pragma D attributes Private/Private/Common provider ruby module
++#pragma D attributes Private/Private/Common provider ruby function
++#pragma D attributes Evolving/Evolving/Common provider ruby name
++#pragma D attributes Evolving/Evolving/Common provider ruby args
+\ No newline at end of file
+Index: common.mk
+===================================================================
+--- common.mk	(revision 16089)
++++ common.mk	(working copy)
+@@ -49,6 +49,7 @@
+ 		string.$(OBJEXT) \
+ 		struct.$(OBJEXT) \
+ 		time.$(OBJEXT) \
++		tracer.$(OBJEXT) \
+ 		util.$(OBJEXT) \
+ 		variable.$(OBJEXT) \
+ 		version.$(OBJEXT) \
+@@ -262,7 +263,7 @@
+ 
+ clean: clean-ext clean-local
+ clean-local::
+-	@$(RM) $(OBJS) $(MAINOBJ) $(WINMAINOBJ) $(LIBRUBY_A) $(LIBRUBY_SO) $(LIBRUBY) $(LIBRUBY_ALIASES)
++	@$(RM) $(OBJS) $(MAINOBJ) $(WINMAINOBJ) $(LIBRUBY_A) $(LIBRUBY_SO) $(LIBRUBY) $(LIBRUBY_ALIASES) $(DTRACE_HEADER) 
+ 	@$(RM) $(PROGRAM) $(WPROGRAM) miniruby$(EXEEXT) dmyext.$(OBJEXT) $(ARCHFILE) .*.time
+ clean-ext:
+ 	@-$(MINIRUBY) $(srcdir)/ext/extmk.rb $(EXTMK_ARGS) clean
+@@ -363,7 +364,7 @@
+ error.$(OBJEXT): {$(VPATH)}error.c {$(VPATH)}ruby.h config.h \
+   {$(VPATH)}defines.h {$(VPATH)}intern.h {$(VPATH)}missing.h \
+   {$(VPATH)}env.h {$(VPATH)}st.h
+-eval.$(OBJEXT): {$(VPATH)}eval.c {$(VPATH)}ruby.h config.h \
++eval.$(OBJEXT): $(DTRACE_HEADER) {$(VPATH)}eval.c {$(VPATH)}ruby.h config.h \
+   {$(VPATH)}defines.h {$(VPATH)}intern.h {$(VPATH)}missing.h \
+   {$(VPATH)}node.h {$(VPATH)}env.h {$(VPATH)}util.h \
+   {$(VPATH)}rubysig.h {$(VPATH)}st.h {$(VPATH)}dln.h
+@@ -371,7 +372,7 @@
+   {$(VPATH)}defines.h {$(VPATH)}intern.h {$(VPATH)}missing.h \
+   {$(VPATH)}rubyio.h {$(VPATH)}rubysig.h {$(VPATH)}util.h \
+   {$(VPATH)}dln.h
+-gc.$(OBJEXT): {$(VPATH)}gc.c {$(VPATH)}ruby.h config.h \
++gc.$(OBJEXT): $(DTRACE_HEADER) {$(VPATH)}gc.c {$(VPATH)}ruby.h config.h \
+   {$(VPATH)}defines.h {$(VPATH)}intern.h {$(VPATH)}missing.h \
+   {$(VPATH)}rubysig.h {$(VPATH)}st.h {$(VPATH)}node.h \
+   {$(VPATH)}env.h {$(VPATH)}re.h {$(VPATH)}regex.h
+@@ -394,7 +395,7 @@
+ numeric.$(OBJEXT): {$(VPATH)}numeric.c {$(VPATH)}ruby.h config.h \
+   {$(VPATH)}env.h {$(VPATH)}defines.h {$(VPATH)}intern.h \
+   {$(VPATH)}missing.h
+-object.$(OBJEXT): {$(VPATH)}object.c {$(VPATH)}ruby.h config.h \
++object.$(OBJEXT): $(DTRACE_HEADER) {$(VPATH)}object.c {$(VPATH)}ruby.h config.h \
+   {$(VPATH)}defines.h {$(VPATH)}intern.h {$(VPATH)}missing.h \
+   {$(VPATH)}st.h {$(VPATH)}util.h
+ pack.$(OBJEXT): {$(VPATH)}pack.c {$(VPATH)}ruby.h config.h \
+Index: eval.c
+===================================================================
+--- eval.c	(revision 16089)
++++ eval.c	(working copy)
+@@ -217,6 +217,9 @@
+ #endif
+ 
+ #include <sys/stat.h>
++#ifdef ENABLE_DTRACE
++#include "dtrace.h"
++#endif
+ 
+ VALUE rb_cProc;
+ VALUE rb_cBinding;
+@@ -3028,6 +3031,13 @@
+ 	RETURN(Qfalse);
+ 
+       case NODE_IF:
++#ifdef ENABLE_DTRACE
++	if (RUBY_LINE_ENABLED()) {
++	    if (ruby_current_node && ruby_current_node->nd_file) {
++		  RUBY_LINE(ruby_current_node->nd_file, nd_line(ruby_current_node));
++	    }
++	}
++#endif
+ 	EXEC_EVENT_HOOK(RUBY_EVENT_LINE, node, self,
+ 			ruby_frame->last_func,
+ 			ruby_frame->last_class);
+@@ -3046,6 +3056,13 @@
+ 	    if (nd_type(node) != NODE_WHEN) goto again;
+ 	    tag = node->nd_head;
+ 	    while (tag) {
++#ifdef ENABLE_DTRACE
++		if (RUBY_LINE_ENABLED()) {
++		    if (ruby_current_node && ruby_current_node->nd_file) {
++                RUBY_LINE(ruby_current_node->nd_file, nd_line(ruby_current_node));
++            }
++        }
++#endif		
+ 		EXEC_EVENT_HOOK(RUBY_EVENT_LINE, tag, self,
+ 				ruby_frame->last_func,
+ 				ruby_frame->last_class);
+@@ -3087,6 +3104,13 @@
+ 		}
+ 		tag = node->nd_head;
+ 		while (tag) {
++#ifdef ENABLE_DTRACE
++            if (RUBY_LINE_ENABLED()) {
++                if (ruby_current_node && ruby_current_node->nd_file) {
++                    RUBY_LINE(ruby_current_node->nd_file, nd_line(ruby_current_node));
++		        }
++		    }
++#endif			
+ 		    EXEC_EVENT_HOOK(RUBY_EVENT_LINE, tag, self,
+ 				    ruby_frame->last_func,
+ 				    ruby_frame->last_class);
+@@ -3307,6 +3331,13 @@
+ 		rescuing = -1;
+ 		while (resq) {
+ 		    ruby_current_node = resq;
++#ifdef ENABLE_DTRACE
++		    if (RUBY_RESCUE_ENABLED()) {
++		        if (ruby_current_node && ruby_current_node->nd_file) {
++                    RUBY_RESCUE(ruby_current_node->nd_file, nd_line(ruby_current_node));
++                }
++            }
++#endif		
+ 		    if (handle_rescue(self, resq)) {
+ 			state = 0;
+ 			rescuing = 1;
+@@ -4124,6 +4155,13 @@
+ 	break;
+ 
+       case NODE_NEWLINE:
++#ifdef ENABLE_DTRACE
++          if (RUBY_LINE_ENABLED()) {
++              if (ruby_current_node && ruby_current_node->nd_file) {
++                  RUBY_LINE(ruby_current_node->nd_file, nd_line(ruby_current_node));
++              }
++          }
++#endif
+ 	EXEC_EVENT_HOOK(RUBY_EVENT_LINE, node, self, 
+ 			ruby_frame->last_func,
+ 			ruby_frame->last_class);
+@@ -4598,6 +4636,11 @@
+ 
+     rb_trap_restore_mask();
+     if (tag != TAG_FATAL) {
++#ifdef ENABLE_DTRACE
++        if (RUBY_RAISE_ENABLED()) {
++            RUBY_RAISE(rb_obj_classname(ruby_errinfo), ruby_sourcefile, ruby_sourceline);
++        }
++#endif
+ 	EXEC_EVENT_HOOK(RUBY_EVENT_RAISE, ruby_current_node,
+ 			ruby_frame->self,
+ 			ruby_frame->last_func,
+@@ -5828,6 +5871,14 @@
+ 		rb_bug("bad argc (%d) specified for `%s(%s)'",
+ 		       len, rb_class2name(klass), rb_id2name(id));
+ 	    }
++#ifdef ENABLE_DTRACE
++       if (RUBY_FUNCTION_ENTRY_ENABLED()) {
++           char *classname = rb_class2name(klass), *methodname = rb_id2name(id);
++  	       if (ruby_current_node && ruby_current_node->nd_file && classname && methodname) {
++               RUBY_FUNCTION_ENTRY(classname, methodname, ruby_current_node->nd_file, nd_line(ruby_current_node));
++           }
++      }
++#endif	
+ 	    if (event_hooks) {
+ 		int state;
+ 
+@@ -5846,6 +5897,14 @@
+ 	    else {
+ 		result = call_cfunc(body->nd_cfnc, recv, len, argc, argv);
+ 	    }
++#ifdef ENABLE_DTRACE
++        if (RUBY_FUNCTION_RETURN_ENABLED()) {
++            char *classname = rb_class2name(klass), *methodname = rb_id2name(id);
++            if (ruby_current_node && ruby_current_node->nd_file && classname && methodname) {
++	            RUBY_FUNCTION_RETURN(classname, methodname, ruby_current_node->nd_file, nd_line(ruby_current_node));
++	        }
++	    }
++#endif	
+ 	}
+ 	break;
+ 
+@@ -5873,12 +5932,28 @@
+ 
+       case NODE_BMETHOD:
+ 	ruby_frame->flags |= FRAME_DMETH;
++#ifdef ENABLE_DTRACE
++	if (RUBY_FUNCTION_ENTRY_ENABLED()) {
++		char *classname = rb_class2name(klass), *methodname = rb_id2name(id);
++		if (ruby_current_node && ruby_current_node->nd_file && classname && methodname) {
++	        RUBY_FUNCTION_ENTRY(classname, methodname, ruby_current_node->nd_file, nd_line(ruby_current_node));
++	    }
++	 }
++#endif	
+ 	if (event_hooks) {
+ 	    struct BLOCK *data;
+ 	    Data_Get_Struct(body->nd_cval, struct BLOCK, data);
+ 	    EXEC_EVENT_HOOK(RUBY_EVENT_CALL, data->body, recv, id, klass);
+ 	}
+ 	result = proc_invoke(body->nd_cval, rb_ary_new4(argc, argv), recv, klass);
++#ifdef ENABLE_DTRACE
++	 if (RUBY_FUNCTION_RETURN_ENABLED()) {
++	    char *classname = rb_class2name(klass), *methodname = rb_id2name(id);
++	    if (ruby_current_node && ruby_current_node->nd_file && classname && methodname) {
++	        RUBY_FUNCTION_RETURN(classname, methodname, ruby_current_node->nd_file, nd_line(ruby_current_node));
++	    }
++	}
++#endif	
+ 	if (event_hooks) {
+ 	    EXEC_EVENT_HOOK(RUBY_EVENT_RETURN, body, recv, id, klass);
+ 	}
+@@ -5992,6 +6067,13 @@
+ 		    }
+ 		    ruby_frame->argc = i;
+ 		}
++#ifdef ENABLE_DTRACE
++		if (RUBY_FUNCTION_ENTRY_ENABLED()) {
++			char *classname = rb_class2name(klass), *methodname = rb_id2name(id);
++			if (ruby_current_node && ruby_current_node->nd_file && classname && methodname)
++		            RUBY_FUNCTION_ENTRY(classname, methodname, ruby_current_node->nd_file, nd_line(ruby_current_node));
++		 }
++#endif		
+ 		if (event_hooks) {
+ 		    EXEC_EVENT_HOOK(RUBY_EVENT_CALL, b2, recv, id, klass);
+ 		}
+@@ -6002,6 +6084,14 @@
+ 		state = 0;
+ 	    }
+ 	    POP_TAG();
++#ifdef ENABLE_DTRACE
++       if (RUBY_FUNCTION_RETURN_ENABLED()) {
++           char *classname = rb_class2name(klass), *methodname = rb_id2name(id);
++           if (ruby_current_node && ruby_current_node->nd_file && classname && methodname) {
++               RUBY_FUNCTION_RETURN(classname, methodname, ruby_current_node->nd_file, nd_line(ruby_current_node));
++           }
++      }
++#endif	
+ 	    if (event_hooks) {
+ 		EXEC_EVENT_HOOK(RUBY_EVENT_RETURN, body, recv, id, klass);
+ 	    }
+Index: gc.c
+===================================================================
+--- gc.c	(revision 16089)
++++ gc.c	(working copy)
+@@ -30,6 +30,11 @@
+ #include <sys/resource.h>
+ #endif
+ 
++#ifdef ENABLE_DTRACE
++#include <sys/sdt.h>
++#include "dtrace.h"
++#endif
++
+ #if defined _WIN32 || defined __CYGWIN__
+ #include <windows.h>
+ #endif
+@@ -1159,6 +1164,11 @@
+ 	break;
+     }
+ 
++#ifdef ENABLE_DTRACE
++   if (RUBY_OBJECT_FREE_ENABLED()) {
++      RUBY_OBJECT_FREE(rb_class2name(CLASS_OF(obj)));
++   }
++#endif
+     if (FL_TEST(obj, FL_EXIVAR)) {
+ 	rb_free_generic_ivar((VALUE)obj);
+     }
+@@ -1322,6 +1332,13 @@
+ {
+     struct gc_list *list;
+     struct FRAME * volatile frame; /* gcc 2.7.2.3 -O2 bug??  */
++
++#ifdef ENABLE_DTRACE
++    if (RUBY_GC_BEGIN_ENABLED()) {
++       RUBY_GC_BEGIN();
++    }
++#endif
++
+     jmp_buf save_regs_gc_mark;
+     SET_STACK_END;
+ 
+@@ -1414,6 +1431,12 @@
+     } while (!MARK_STACK_EMPTY);
+ 
+     gc_sweep();
++
++#ifdef ENABLE_DTRACE
++    if (RUBY_GC_END_ENABLED()) {
++        RUBY_GC_END();
++    }
++#endif
+ }
+ 
+ void
