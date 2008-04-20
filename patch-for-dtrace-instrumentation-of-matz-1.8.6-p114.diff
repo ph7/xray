@@ -81,7 +81,7 @@ Index: object.c
 ===================================================================
 --- object.c	(revision 16089)
 +++ object.c	(working copy)
-@@ -19,6 +19,10 @@
+@@ -19,7 +19,35 @@
  #include <errno.h>
  #include <ctype.h>
  #include <math.h>
@@ -90,30 +90,40 @@ Index: object.c
 +#include "node.h"
 +#endif
  
++#ifdef ENABLE_DTRACE
++
++#define FIRE_OBJECT_CREATE_START_PROBE(ruby_current_node, klass) \
++    if (RUBY_OBJECT_CREATE_START_ENABLED()) { \
++        char *file = ruby_current_node == NULL ? "" : ruby_current_node->nd_file; \
++        int   line = ruby_current_node == NULL ? 0  : nd_line(ruby_current_node); \
++	    RUBY_OBJECT_CREATE_START(rb_class2name(klass), file, line); \
++    }
++
++#define FIRE_OBJECT_CREATE_DONE_PROBE(ruby_current_node, klass) \
++    if (RUBY_OBJECT_CREATE_DONE_ENABLED()) { \
++	    char *file = ruby_current_node == NULL ? "" : ruby_current_node->nd_file; \
++	    int   line = ruby_current_node == NULL ? 0  : nd_line(ruby_current_node); \
++	    RUBY_OBJECT_CREATE_DONE(rb_class2name(klass), file, line); \
++    }
++
++#else
++
++#define FIRE_OBJECT_CREATE_START_PROBE(ruby_current_node, klass)  /* NOOP */
++#define FIRE_OBJECT_CREATE_DONE_PROBE(ruby_current_node, klass)   /* NOOP */
++
++#endif
++
++
  VALUE rb_mKernel;
  VALUE rb_cObject;
-@@ -1553,7 +1557,24 @@
+ VALUE rb_cModule;
+@@ -1553,7 +1581,9 @@
      if (FL_TEST(klass, FL_SINGLETON)) {
  	rb_raise(rb_eTypeError, "can't create instance of virtual class");
      }
-+
-+#ifdef ENABLE_DTRACE
-+    if (RUBY_OBJECT_CREATE_START_ENABLED()) {
-+        char *file = ruby_current_node == NULL ? "" : ruby_current_node->nd_file;
-+        int   line = ruby_current_node == NULL ? 0  : nd_line(ruby_current_node);
-+	    RUBY_OBJECT_CREATE_START(rb_class2name(klass), file, line);
-+    }
-+#endif
++    FIRE_OBJECT_CREATE_START_PROBE(ruby_current_node, klass);
      obj = rb_funcall(klass, ID_ALLOCATOR, 0, 0);
-+
-+#ifdef ENABLE_DTRACE
-+    if (RUBY_OBJECT_CREATE_DONE_ENABLED()) {
-+	    char *file = ruby_current_node == NULL ? "" : ruby_current_node->nd_file;
-+	    int   line = ruby_current_node == NULL ? 0  : nd_line(ruby_current_node);
-+	    RUBY_OBJECT_CREATE_DONE(rb_class2name(klass), file, line);
-+    }
-+#endif
-+
++    FIRE_OBJECT_CREATE_DONE_PROBE(ruby_current_node, klass);
      if (rb_obj_class(obj) != rb_class_real(klass)) {
  	rb_raise(rb_eTypeError, "wrong instance allocation");
      }
@@ -121,7 +131,7 @@ Index: tracer.c
 ===================================================================
 --- tracer.c	(revision 0)
 +++ tracer.c	(revision 0)
-@@ -0,0 +1,63 @@
+@@ -0,0 +1,62 @@
 +#include "ruby.h"
 +
 +#ifdef ENABLE_DTRACE
@@ -143,7 +153,7 @@ Index: tracer.c
 +	char *start_probe;
 +	char *end_probe;
 +	
-+	#ifdef ENABLE_DTRACE
++#ifdef ENABLE_DTRACE
 +
 +	args = rb_scan_args(argc, argv, "11", &name, &data);
 +	probe_data = args == 2 ? StringValuePtr(data) : "";
@@ -159,12 +169,11 @@ Index: tracer.c
 +		/* Build -start and -end strings for probe names */
 +		if (RUBY_RUBY_PROBE_ENABLED())
 +			RUBY_RUBY_PROBE(start_probe, probe_data);
-+	#endif
++#endif
 +	
 +		ret = rb_yield(Qnil);
 +	
-+	#if ENABLE_DTRACE
-+
++#if ENABLE_DTRACE
 +		if (RUBY_RUBY_PROBE_ENABLED())
 +			RUBY_RUBY_PROBE(end_probe, probe_data);
 +		
@@ -175,7 +184,7 @@ Index: tracer.c
 +			RUBY_RUBY_PROBE(probe_name, probe_data);
 +		ret = Qnil;
 +	}
-+	#endif
++#endif
 +    	return ret;
 +}
 +
@@ -279,173 +288,152 @@ Index: eval.c
  
  VALUE rb_cProc;
  VALUE rb_cBinding;
-@@ -3028,6 +3031,13 @@
+@@ -1138,6 +1141,53 @@
+ 	} \
+     } while (0)
+ 
++#ifdef ENABLE_DTRACE
++
++#define FIRE_LINE_PROBE(ruby_current_node) \
++    if (RUBY_LINE_ENABLED()) { \
++        if (ruby_current_node && ruby_current_node->nd_file) { \
++            RUBY_LINE(ruby_current_node->nd_file, nd_line(ruby_current_node)); \
++        } \
++    }
++
++#define FIRE_RESCUE_PROBE(ruby_current_node) \
++    if (RUBY_RESCUE_ENABLED()) { \
++        if (ruby_current_node && ruby_current_node->nd_file) { \
++                  RUBY_RESCUE(ruby_current_node->nd_file, nd_line(ruby_current_node)); \
++         } \
++    }
++
++#define FIRE_RAISE_PROBE(ruby_errinfo, ruby_sourcefile, ruby_sourceline) \
++    if (RUBY_RAISE_ENABLED()) { \
++        RUBY_RAISE(rb_obj_classname(ruby_errinfo), ruby_sourcefile, ruby_sourceline); \
++    }
++
++#define FIRE_FUNCTION_ENTRY(ruby_current_node, klass, id) \
++	if (RUBY_FUNCTION_ENTRY_ENABLED()) { \
++		char *classname = rb_class2name(klass), *methodname = rb_id2name(id); \
++		if (ruby_current_node && ruby_current_node->nd_file && classname && methodname) { \
++			RUBY_FUNCTION_ENTRY(classname, methodname, ruby_current_node->nd_file, nd_line(ruby_current_node)); \
++		} \
++	}
++
++#define FIRE_FUNCTION_RETURN(ruby_current_node, klass, id) \
++	if (RUBY_FUNCTION_RETURN_ENABLED()) { \
++		char *classname = rb_class2name(klass), *methodname = rb_id2name(id); \
++		if (ruby_current_node && ruby_current_node->nd_file && classname && methodname) { \
++			RUBY_FUNCTION_RETURN(classname, methodname, ruby_current_node->nd_file, nd_line(ruby_current_node)); \
++		} \
++	}
++
++#else
++
++#define FIRE_LINE_PROBE(ruby_current_node)    /* NOOP */
++#define FIRE_RESCUE_PROBE(ruby_current_node)  /* NOOP */
++#define FIRE_RAISE_PROBE(ruby_errinfo, ruby_sourcefile, ruby_sourceline)  /* NOOP */
++#define FIRE_FUNCTION_ENTRY(ruby_current_node, klass, id)   /* NOOP */
++#define FIRE_FUNCTION_RETURN(ruby_current_node, klass, id)  /* NOOP */
++
++#endif
++
+ static VALUE trace_func = 0;
+ static int tracing = 0;
+ static void call_trace_func _((rb_event_t,NODE*,VALUE,ID,VALUE));
+@@ -3028,6 +3078,7 @@
  	RETURN(Qfalse);
  
        case NODE_IF:
-+#ifdef ENABLE_DTRACE
-+	if (RUBY_LINE_ENABLED()) {
-+	    if (ruby_current_node && ruby_current_node->nd_file) {
-+		  RUBY_LINE(ruby_current_node->nd_file, nd_line(ruby_current_node));
-+	    }
-+	}
-+#endif
++	FIRE_LINE_PROBE(ruby_current_node);
  	EXEC_EVENT_HOOK(RUBY_EVENT_LINE, node, self,
  			ruby_frame->last_func,
  			ruby_frame->last_class);
-@@ -3046,6 +3056,13 @@
+@@ -3046,6 +3097,7 @@
  	    if (nd_type(node) != NODE_WHEN) goto again;
  	    tag = node->nd_head;
  	    while (tag) {
-+#ifdef ENABLE_DTRACE
-+		if (RUBY_LINE_ENABLED()) {
-+		    if (ruby_current_node && ruby_current_node->nd_file) {
-+                RUBY_LINE(ruby_current_node->nd_file, nd_line(ruby_current_node));
-+            }
-+        }
-+#endif		
++		FIRE_LINE_PROBE(ruby_current_node);
  		EXEC_EVENT_HOOK(RUBY_EVENT_LINE, tag, self,
  				ruby_frame->last_func,
  				ruby_frame->last_class);
-@@ -3087,6 +3104,13 @@
+@@ -3087,6 +3139,7 @@
  		}
  		tag = node->nd_head;
  		while (tag) {
-+#ifdef ENABLE_DTRACE
-+            if (RUBY_LINE_ENABLED()) {
-+                if (ruby_current_node && ruby_current_node->nd_file) {
-+                    RUBY_LINE(ruby_current_node->nd_file, nd_line(ruby_current_node));
-+		        }
-+		    }
-+#endif			
++		    FIRE_LINE_PROBE(ruby_current_node);
  		    EXEC_EVENT_HOOK(RUBY_EVENT_LINE, tag, self,
  				    ruby_frame->last_func,
  				    ruby_frame->last_class);
-@@ -3307,6 +3331,13 @@
+@@ -3307,6 +3360,7 @@
  		rescuing = -1;
  		while (resq) {
  		    ruby_current_node = resq;
-+#ifdef ENABLE_DTRACE
-+		    if (RUBY_RESCUE_ENABLED()) {
-+		        if (ruby_current_node && ruby_current_node->nd_file) {
-+                    RUBY_RESCUE(ruby_current_node->nd_file, nd_line(ruby_current_node));
-+                }
-+            }
-+#endif		
++		    FIRE_RESCUE_PROBE(ruby_current_node);
  		    if (handle_rescue(self, resq)) {
  			state = 0;
  			rescuing = 1;
-@@ -4124,6 +4155,13 @@
+@@ -4124,6 +4178,7 @@
  	break;
  
        case NODE_NEWLINE:
-+#ifdef ENABLE_DTRACE
-+          if (RUBY_LINE_ENABLED()) {
-+              if (ruby_current_node && ruby_current_node->nd_file) {
-+                  RUBY_LINE(ruby_current_node->nd_file, nd_line(ruby_current_node));
-+              }
-+          }
-+#endif
++	FIRE_LINE_PROBE(ruby_current_node);
  	EXEC_EVENT_HOOK(RUBY_EVENT_LINE, node, self, 
  			ruby_frame->last_func,
  			ruby_frame->last_class);
-@@ -4598,6 +4636,11 @@
+@@ -4598,6 +4653,7 @@
  
      rb_trap_restore_mask();
      if (tag != TAG_FATAL) {
-+#ifdef ENABLE_DTRACE
-+        if (RUBY_RAISE_ENABLED()) {
-+            RUBY_RAISE(rb_obj_classname(ruby_errinfo), ruby_sourcefile, ruby_sourceline);
-+        }
-+#endif
++	FIRE_RAISE_PROBE(ruby_errinfo, ruby_sourcefile, ruby_sourceline);
  	EXEC_EVENT_HOOK(RUBY_EVENT_RAISE, ruby_current_node,
  			ruby_frame->self,
  			ruby_frame->last_func,
-@@ -5828,6 +5871,14 @@
+@@ -5828,6 +5884,7 @@
  		rb_bug("bad argc (%d) specified for `%s(%s)'",
  		       len, rb_class2name(klass), rb_id2name(id));
  	    }
-+#ifdef ENABLE_DTRACE
-+       if (RUBY_FUNCTION_ENTRY_ENABLED()) {
-+           char *classname = rb_class2name(klass), *methodname = rb_id2name(id);
-+  	       if (ruby_current_node && ruby_current_node->nd_file && classname && methodname) {
-+               RUBY_FUNCTION_ENTRY(classname, methodname, ruby_current_node->nd_file, nd_line(ruby_current_node));
-+           }
-+      }
-+#endif	
++		FIRE_FUNCTION_ENTRY(ruby_current_node, klass, id);
  	    if (event_hooks) {
  		int state;
  
-@@ -5846,6 +5897,14 @@
+@@ -5846,6 +5903,7 @@
  	    else {
  		result = call_cfunc(body->nd_cfnc, recv, len, argc, argv);
  	    }
-+#ifdef ENABLE_DTRACE
-+        if (RUBY_FUNCTION_RETURN_ENABLED()) {
-+            char *classname = rb_class2name(klass), *methodname = rb_id2name(id);
-+            if (ruby_current_node && ruby_current_node->nd_file && classname && methodname) {
-+	            RUBY_FUNCTION_RETURN(classname, methodname, ruby_current_node->nd_file, nd_line(ruby_current_node));
-+	        }
-+	    }
-+#endif	
++	    FIRE_FUNCTION_RETURN(ruby_current_node, klass, id);
  	}
  	break;
  
-@@ -5873,12 +5932,28 @@
+@@ -5873,12 +5931,14 @@
  
        case NODE_BMETHOD:
  	ruby_frame->flags |= FRAME_DMETH;
-+#ifdef ENABLE_DTRACE
-+	if (RUBY_FUNCTION_ENTRY_ENABLED()) {
-+		char *classname = rb_class2name(klass), *methodname = rb_id2name(id);
-+		if (ruby_current_node && ruby_current_node->nd_file && classname && methodname) {
-+	        RUBY_FUNCTION_ENTRY(classname, methodname, ruby_current_node->nd_file, nd_line(ruby_current_node));
-+	    }
-+	 }
-+#endif	
++	FIRE_FUNCTION_ENTRY(ruby_current_node, klass, id);
  	if (event_hooks) {
  	    struct BLOCK *data;
  	    Data_Get_Struct(body->nd_cval, struct BLOCK, data);
  	    EXEC_EVENT_HOOK(RUBY_EVENT_CALL, data->body, recv, id, klass);
  	}
  	result = proc_invoke(body->nd_cval, rb_ary_new4(argc, argv), recv, klass);
-+#ifdef ENABLE_DTRACE
-+	 if (RUBY_FUNCTION_RETURN_ENABLED()) {
-+	    char *classname = rb_class2name(klass), *methodname = rb_id2name(id);
-+	    if (ruby_current_node && ruby_current_node->nd_file && classname && methodname) {
-+	        RUBY_FUNCTION_RETURN(classname, methodname, ruby_current_node->nd_file, nd_line(ruby_current_node));
-+	    }
-+	}
-+#endif	
++	FIRE_FUNCTION_RETURN(ruby_current_node, klass, id);
  	if (event_hooks) {
  	    EXEC_EVENT_HOOK(RUBY_EVENT_RETURN, body, recv, id, klass);
  	}
-@@ -5992,6 +6067,13 @@
+@@ -5992,6 +6052,7 @@
  		    }
  		    ruby_frame->argc = i;
  		}
-+#ifdef ENABLE_DTRACE
-+		if (RUBY_FUNCTION_ENTRY_ENABLED()) {
-+			char *classname = rb_class2name(klass), *methodname = rb_id2name(id);
-+			if (ruby_current_node && ruby_current_node->nd_file && classname && methodname)
-+		            RUBY_FUNCTION_ENTRY(classname, methodname, ruby_current_node->nd_file, nd_line(ruby_current_node));
-+		 }
-+#endif		
++		FIRE_FUNCTION_ENTRY(ruby_current_node, klass, id);
  		if (event_hooks) {
  		    EXEC_EVENT_HOOK(RUBY_EVENT_CALL, b2, recv, id, klass);
  		}
-@@ -6002,6 +6084,14 @@
+@@ -6002,6 +6063,7 @@
  		state = 0;
  	    }
  	    POP_TAG();
-+#ifdef ENABLE_DTRACE
-+       if (RUBY_FUNCTION_RETURN_ENABLED()) {
-+           char *classname = rb_class2name(klass), *methodname = rb_id2name(id);
-+           if (ruby_current_node && ruby_current_node->nd_file && classname && methodname) {
-+               RUBY_FUNCTION_RETURN(classname, methodname, ruby_current_node->nd_file, nd_line(ruby_current_node));
-+           }
-+      }
-+#endif	
++	    FIRE_FUNCTION_RETURN(ruby_current_node, klass, id);
  	    if (event_hooks) {
  		EXEC_EVENT_HOOK(RUBY_EVENT_RETURN, body, recv, id, klass);
  	    }
@@ -465,42 +453,59 @@ Index: gc.c
  #if defined _WIN32 || defined __CYGWIN__
  #include <windows.h>
  #endif
-@@ -1159,6 +1164,11 @@
+@@ -68,6 +73,31 @@
+ #endif
+ #endif
+ 
++#ifdef ENABLE_DTRACE
++
++#define FIRE_OBJECT_FREE_PROBE(obj) \
++	if (RUBY_OBJECT_FREE_ENABLED()) { \
++		RUBY_OBJECT_FREE(rb_class2name(CLASS_OF(obj))); \
++	} \
++
++#define FIRE_GC_BEGIN_PROBE() \
++	if (RUBY_GC_BEGIN_ENABLED()) { \
++	   RUBY_GC_BEGIN(); \
++	}
++
++#define FIRE_GC_END_PROBE() \
++    if (RUBY_GC_END_ENABLED()) { \
++        RUBY_GC_END(); \
++    }
++
++#else
++
++#define FIRE_OBJECT_FREE_PROBE(obj)  /* NOOP */
++#define FIRE_GC_BEGIN_PROBE()        /* NOOP */
++#define FIRE_GC_END_PROBE()          /* NOOP */
++
++#endif
++
+ static unsigned long malloc_increase = 0;
+ static unsigned long malloc_limit = GC_MALLOC_LIMIT;
+ static void run_final();
+@@ -1159,6 +1189,7 @@
  	break;
      }
  
-+#ifdef ENABLE_DTRACE
-+   if (RUBY_OBJECT_FREE_ENABLED()) {
-+      RUBY_OBJECT_FREE(rb_class2name(CLASS_OF(obj)));
-+   }
-+#endif
++    FIRE_OBJECT_FREE_PROBE(obj);
      if (FL_TEST(obj, FL_EXIVAR)) {
  	rb_free_generic_ivar((VALUE)obj);
      }
-@@ -1322,6 +1332,13 @@
+@@ -1322,6 +1353,7 @@
  {
      struct gc_list *list;
      struct FRAME * volatile frame; /* gcc 2.7.2.3 -O2 bug??  */
-+
-+#ifdef ENABLE_DTRACE
-+    if (RUBY_GC_BEGIN_ENABLED()) {
-+       RUBY_GC_BEGIN();
-+    }
-+#endif
-+
++    FIRE_GC_BEGIN_PROBE();
      jmp_buf save_regs_gc_mark;
      SET_STACK_END;
  
-@@ -1414,6 +1431,12 @@
+@@ -1414,6 +1446,7 @@
      } while (!MARK_STACK_EMPTY);
  
      gc_sweep();
-+
-+#ifdef ENABLE_DTRACE
-+    if (RUBY_GC_END_ENABLED()) {
-+        RUBY_GC_END();
-+    }
-+#endif
++    FIRE_GC_END_PROBE();
  }
  
  void
