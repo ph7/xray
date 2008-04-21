@@ -35,17 +35,16 @@ module XRay
         # evaling a block .
         #    
         # The first argument passed will be passed to the D script as arg0 for
-        # the ruby-probe probe. This is conventionally a probe base name. The
-        # probes which fire before and after the block runs will have
-        # "-start" and "-end" appended, respectively.
+        # the ruby-probe probe. The first argument is conventionally a 
+        # probe base name. The probes which fire before and after the block 
+        # runs will have "-start" and "-end" appended to the probe base name, 
+        # respectively.
         #    
         # The second argument is optional and can be used to pass additional
         # data into the D script as arg1.
         #
         # Example:
         #    
-        # XRay::DTrace::Tracer.fire('service-start', "order processing")
-        #
         # XRay::DTrace::Tracer.firing('db-query', "select * from dual;") do
         #   ActiveRecord::Base.execute("select * from dual;")
         # 
@@ -65,7 +64,7 @@ module XRay
           result
         end
 
-        # Returns true if ruby-probe probes are enables 
+        # Returns true if ruby-probe probes are enabled.
         # (application-level probes for Ruby).
         def enabled?
           DTracer.enabled?
@@ -73,8 +72,6 @@ module XRay
 
      
       elsif Object.const_defined?(:Tracer) && Tracer.methods.include?(:fire)  ### Joyent Tracer ##
-
-        raise "got here"
 
         def fire(name, data = nil)    #:nodoc: all      
         
