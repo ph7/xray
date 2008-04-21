@@ -131,7 +131,7 @@ Index: tracer.c
 ===================================================================
 --- tracer.c	(revision 0)
 +++ tracer.c	(revision 0)
-@@ -0,0 +1,62 @@
+@@ -0,0 +1,73 @@
 +#include "ruby.h"
 +
 +#ifdef ENABLE_DTRACE
@@ -188,11 +188,22 @@ Index: tracer.c
 +    	return ret;
 +}
 +
++static VALUE
++ruby_dtrace_enabled(klass)
++    VALUE klass;
++{
++#ifdef ENABLE_DTRACE
++    return RUBY_RUBY_PROBE_ENABLED() ? Qtrue : Qfalse;
++#else
++    return Qfalse;
++#endif
++}
 +
 +void Init_Tracer()
 +{
 +	rb_mDtrace = rb_define_module("Tracer");
 +	rb_define_module_function(rb_mDtrace, "fire", ruby_dtrace_fire, -1);
++	rb_define_module_function(rb_mDtrace, "enabled?", ruby_dtrace_enabled, 0);
 +}
 Index: dtrace.d
 ===================================================================
