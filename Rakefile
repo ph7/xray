@@ -35,13 +35,15 @@ end
 specification = Gem::Specification.new do |s|
   s.name = "XRay"
   s.summary = "Dump backtrace for all threads."
-  s.version = "1.0"
+  s.version = "1.0.1"
   s.author = "Philippe Hanrigou"
 	s.email = 'xray-developer@rubyforge.org'
   s.homepage = "http://xray.rubyforge.com"
   s.rubyforge_project = 'xray'
   s.platform = Gem::Platform::RUBY
-  s.files = FileList['lib/**/*.rb'] + FileList['test/**/*.rb']
+  s.files = FileList['lib/**/*.rb'] + FileList['test/**/*.rb'] + 
+            FileList['**/*.d'] + FileList['**/*.diff'] + 
+            [ 'gdb_macros', 'Rakefile' ]
   s.require_path = "lib"
   s.extensions = []
   s.rdoc_options << '--title' << 'XRay' << '--main' << 'README' << '--line-numbers'
