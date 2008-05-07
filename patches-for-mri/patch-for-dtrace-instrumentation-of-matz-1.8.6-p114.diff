@@ -236,7 +236,7 @@ Index: dtrace.d
 +#pragma D attributes Private/Private/Common provider ruby function
 +#pragma D attributes Evolving/Evolving/Common provider ruby name
 +#pragma D attributes Evolving/Evolving/Common provider ruby args
-\ No newline at end of file
++
 Index: common.mk
 ===================================================================
 --- common.mk	(revision 16089)
