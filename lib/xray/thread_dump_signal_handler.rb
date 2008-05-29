@@ -13,7 +13,14 @@ trap "QUIT" do
       thread_description << " alive=#{thread.alive?}"
       thread_description << " priority=#{thread.priority}"
       thread_separator = "-" * 78
-      STDERR.puts "\n#{thread_separator}\n#{thread_description}\n#{thread_separator}\n    #{stack.join("\n      \\_ ")}\n"
+      
+      full_description = "\n#{thread_separator}\n"
+      full_description << thread_description
+      full_description << "\n#{thread_separator}\n"
+      full_description << "    #{stack.join("\n      \\_ ")}\n"
+      
+      # Single puts to avoid interleaved output
+      STDERR.puts full_description
     end
   else
     STDERR.puts "=============== XRay - Current Thread Backtrace ==============="

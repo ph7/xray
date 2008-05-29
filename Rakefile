@@ -59,5 +59,5 @@ end
 
 desc "Publish RDoc on Rubyforge website"
 task :publish_rdoc => :rdoc do
-  sh "scp -r rdoc/* #{ENV['USER']}@rubyforge.org:/var/www/gforge-projects/xray"
+  sh "scp -i ~/.ssh/id_dsa -r rdoc/* #{ENV['USER']}@rubyforge.org:/var/www/gforge-projects/xray"
 end
