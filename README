@@ -17,7 +17,7 @@ http://ph7spot.com/publications/troubleshooting_ruby_processes
 
 == Thread Dump
 
-After patching your Ruby VM with http://xray.rubyforge.org/svn/patches-for-mri/patches-for-mri/caller_for_all_threads_patch_for_MRI_1.8.6.diff
+After patching your Ruby VM with http://xray.rubyforge.org/svn/patches_for_mri/caller_for_all_threads_patch_for_MRI_1.8.6.diff
 as explained in  http://ph7spot.com/caller_for_all_threads, you can install a signal
 handler in charge of dumping the stack trace for all the threads
 in your Ruby VM with:
@@ -55,4 +55,8 @@ See
 * lib/xray/dtrace/active_record_tracing_extension.rb
 
 
+== Author
+
+Philippe Hanrigou
+http://ph7spot.com
 
