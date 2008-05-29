@@ -1,19 +1,43 @@
+= XRay
+
+* http://rubyforge.org/projects/xray
+
+== Description
+
 XRay provides a lightweight yet powerful toolbox for troubleshooting Ruby
-applications when things stop making sense. Includes GDB and DTrace tooling.
+applications when things stop making sense. XRay includes GDB and DTrace 
+tooling as well as a Thread Dump utility that can dump the stack trace 
+of all the thread in your Ruby VM when you send a +QUIT+ signal.
 
-*** GDB ***
+== GDB
 
+Copy the +gdb_macros+ file provided in the gem as your ~/.gdbinit file.
+You will find more details on how to use them, at
+http://ph7spot.com/publications/troubleshooting_ruby_processes
 
-  Copy +gdb_macros+ file provided in the gem as your ~/.gdbinit file.
+== Thread Dump
 
-*** Fire DTrace Application Probes ***
+After patching your Ruby VM with http://xray.rubyforge.org/svn/patches_for_mri/caller_for_all_threads_patch_for_MRI_1.8.6.diff
+as explained in  http://ph7spot.com/caller_for_all_threads, you can install a signal
+handler in charge of dumping the stack trace for all the threads
+in your Ruby VM with:
 
-  See XRay::DTrace::Tracer
+  require "xray/thread_dump_signal_handler"
 
-*** Out-of-the-box Rails DTrace Instrumentation ***
+You can then trigger a thread dump at any time with
 
-  You are one require away from triggering automatically DTrace events for 
-  Rails requests, database access and template rendering. As simple as 
+  kill -QUIT <pid of you ruby process>
+
+== DTrace
+
+=== Fire DTrace Application Probes
+
+See XRay::DTrace::Tracer
+
+=== Out-of-the-box Rails DTrace Instrumentation ***
+
+You are one require away from triggering automatically DTrace events for 
+Rails requests, database access and template rendering. As simple as 
 
      # environment.rb
      Rails::Initializer.run do |config|
@@ -25,10 +49,14 @@ applications when things stop making sense. Includes GDB and DTrace tooling.
        end  
      end
  
-  See 
-   * lib/xray/dtrace/railsenable_tracing.rb
-   * lib/xray/dtrace/action_controller_tracing_extension.rb
-   * lib/xray/dtrace/active_record_tracing_extension.rb
+See 
+* lib/xray/dtrace/railsenable_tracing.rb
+* lib/xray/dtrace/action_controller_tracing_extension.rb
+* lib/xray/dtrace/active_record_tracing_extension.rb
 
 
+== Author
+
+Philippe Hanrigou,
+http://ph7spot.com
 
