@@ -12,21 +12,22 @@ of all the thread in your Ruby VM when you send a +QUIT+ signal.
 == GDB
 
 Copy the +gdb_macros+ file provided in the gem as your ~/.gdbinit file.
-You will find more details on how to use them, at
-http://ph7spot.com/publications/troubleshooting_ruby_processes
+You will find more details on how to use them, in my
+{Troubleshooting Ruby Shortcut}[http://ph7spot.com/publications/troubleshooting_ruby_processes]
 
 == Thread Dump
 
-After patching your Ruby VM with http://xray.rubyforge.org/svn/patches_for_mri/caller_for_all_threads_patch_for_MRI_1.8.6.diff
-as explained in  http://ph7spot.com/caller_for_all_threads, you can install a signal
+After patching your Ruby VM with {caller_for_all_threads_patch_for_MRI_1.8.6.diff}[http://xray.rubyforge.org/svn/patches_for_mri/caller_for_all_threads_patch_for_MRI_1.8.6.diff]
+as explained in {this document}[http://ph7spot.com/caller_for_all_threads], you can install a signal
 handler in charge of dumping the stack trace for all the threads
 in your Ruby VM with:
 
+  require "xray"
   require "xray/thread_dump_signal_handler"
 
 You can then trigger a thread dump at any time with
 
-  kill -QUIT <pid of you ruby process>
+  kill -QUIT <pid of your ruby process>
 
 == DTrace
 
@@ -57,6 +58,6 @@ See
 
 == Author
 
-Philippe Hanrigou
+Philippe Hanrigou,
 http://ph7spot.com
 
