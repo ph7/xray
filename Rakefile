@@ -35,7 +35,7 @@ end
 specification = Gem::Specification.new do |s|
   s.name = "XRay"
   s.summary = "Dump backtrace for all threads."
-  s.version = "1.0.2"
+  s.version = "1.0.3"
   s.author = "Philippe Hanrigou"
 	s.email = 'xray-developer@rubyforge.org'
   s.homepage = "http://xray.rubyforge.com"
