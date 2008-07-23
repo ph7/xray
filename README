@@ -18,6 +18,7 @@ You will find more details on how to use them, in my
 == Thread Dump
 
 After patching your Ruby VM with {caller_for_all_threads_patch_for_MRI_1.8.6.diff}[http://xray.rubyforge.org/svn/patches_for_mri/caller_for_all_threads_patch_for_MRI_1.8.6.diff]
+(or {caller_for_all_threads_patch_for_MRI_1.8.7.diff}[http://xray.rubyforge.org/svn/patches_for_mri/caller_for_all_threads_patch_for_MRI_1.8.7.diff])
 as explained in {this document}[http://ph7spot.com/caller_for_all_threads], you can install a signal
 handler in charge of dumping the stack trace for all the threads
 in your Ruby VM with:
