@@ -8,9 +8,12 @@
  * an invocation number (slower first).
  *
  * Usage:
- *     xray_profile_ruby_function_calls.d -c "ruby -v"
- *     xray_profile_ruby_function_calls.d -p <a pid>
- *     dtrace -s xray_profile_ruby_function_calls.d -p <a pid>
+ *
+ *     sudo /usr/bin/xray_profile_ruby_function_calls.d -p <a pid>
+ *
+ *     sudo /usr/bin/xray_profile_ruby_function_calls.d -c "ruby -v"
+ *
+ *     sudo dtrace -s /usr/bin/xray_profile_ruby_function_calls.d -p <a pid>
  */
  
 this string str;

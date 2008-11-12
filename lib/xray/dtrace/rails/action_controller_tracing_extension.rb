@@ -9,10 +9,10 @@ ActionController::Base.class_eval do
        perform_action_without_tracing
     end
   end
-      
-  def render_with_tracing(options = nil, deprecated_status = nil, &block)
+
+  def render_with_tracing(options = nil, extra_options = {}, &block) 
     firing('render', options.to_s) do
-       render_without_tracing options, deprecated_status
+       render_without_tracing options, extra_options
     end
   end
 
