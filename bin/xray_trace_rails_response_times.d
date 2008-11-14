@@ -24,14 +24,14 @@ this string name;
 this string action;
 this string query;
 
-dtrace:::BEGIN
+dtrace:::BEGIN 
 {
     printf("Tracing... Hit Ctrl-C to end.\n");
     depth = 0;
 }
 
 ruby$target::ruby_dtrace_probe:
-/(this->name = copyinstr(arg0)) == "request-start"/
+/(this->name = copyinstr(arg0)) == "request-start"/ 
 {
     self->request_start[copyinstr(arg1)] = timestamp;
 }
