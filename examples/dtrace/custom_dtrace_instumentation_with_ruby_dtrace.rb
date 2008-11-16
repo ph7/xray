@@ -11,9 +11,12 @@
 #
 #     sudo dtrace -n 'book { printf("%s %d", copyinstr(arg0), arg1); }'
 #
+# sudo dtrace -n 'book-start { printf("%s %d", copyinstr(arg0), arg1); } book-end { printf("%s %d", copyinstr(arg0), arg1); } find-available-flights-start { printf("%s", copyinstr(arg0)); } '
+
 require 'rubygems'
 gem "ruby-dtrace"
 require 'dtrace/provider'
+require File.dirname(__FILE__) + '/../../lib/xray/dtrace/usdt/provider_extensions'
 
 #
 # Define custom DTrace USDT probes on the fly using ruby-dtrace
@@ -22,30 +25,30 @@ require 'dtrace/provider'
 
 Dtrace::Provider.create :booking_engine do |p|
   p.probe :boot
-  p.probe :find_available_flights, :string
-  p.probe :book, :string, :integer
+  p.probe :find_available_flights_start, :string
+  p.probe :find_available_flights_end, :string
+  p.probe :book_start, :string, :integer
+  p.probe :book_end, :string, :integer
 end
 
 #
 # Use these custom probes in your application
 #
 
-
 class BookingEngine
+  include Dtrace::Probe::BookingEngine::XRay
   
   def find_available_flights(destination)
-    Dtrace::Probe::BookingEngine.find_available_flights do |p|
-      p.fire(destination)
+    firing :find_available_flights, destination do
+      sleep 1  # Some business logic ;-)
+      ["AF98", "JB24"]
     end
-    sleep 1  # Some business logic ;-)
-    ["AF98", "JB24"]
   end
   
   def book(flight_number, number_of_seats)
-    Dtrace::Probe::BookingEngine.book do |p|
-      p.fire(flight_number, number_of_seats)
+    firing :book, flight_number, number_of_seats do
+      sleep 3  # Very slow business logic   
     end
-    sleep 3  # Very slow business logic   
   end
   
   def book_all_available_flights
@@ -57,12 +60,12 @@ class BookingEngine
 end
 
 class Application
+  extend Dtrace::Probe::BookingEngine::XRay
 
   def self.boot  
+      
     # Fire a custom DTrace probe without a block (no start/end concept)
-    Dtrace::Probe::BookingEngine.boot do |p|
-      p.fire
-    end
+    fire :boot
     
     booking_engine = BookingEngine.new
     loop do      
