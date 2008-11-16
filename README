@@ -47,6 +47,7 @@ Rails requests, database access and template rendering. As simple as
        ...
 
        config.after_initialize do
+         require "rubygems"
          require "xray/dtrace/rails/enable_tracing"
        end  
      end
