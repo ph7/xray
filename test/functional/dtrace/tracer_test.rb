@@ -6,7 +6,7 @@ functional_tests do
     aClass = Class.new do
       include XRay::DTrace::Tracer
     end
-
+  
     aClass.new.fire "a name"
   end
 
@@ -22,10 +22,10 @@ functional_tests do
     aClass = Class.new do
       include XRay::DTrace::Tracer
     end
-
+  
     assert [true, false].include?(aClass.new.enabled?)
   end
-
+  
   test "fire a probe with block and no data" do
     anObject = Class.new do
       include XRay::DTrace::Tracer
