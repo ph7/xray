@@ -33,7 +33,7 @@ Rake::RDocTask.new(:rdoc) do |rdoc|
 end
 
 specification = Gem::Specification.new do |s|
-  s.name = "XRay"
+  s.name = "xray"
   s.summary = "Dump backtrace for all threads."
   s.version = "1.1"
   s.author = "Philippe Hanrigou"
@@ -42,8 +42,8 @@ specification = Gem::Specification.new do |s|
   s.rubyforge_project = 'xray'
   s.platform = Gem::Platform::RUBY
   s.executables = FileList['bin/**/*'].collect {|path| path.sub /bin\//, ""}
-  s.files = FileList['lib/**/*.rb'] + FileList['test/**/*.rb'] + 
-            FileList['**/*.diff'] + 
+  s.files = FileList['lib/**/*.rb'] + FileList['test/**/*.rb'] + FileList['examples/**/*'] +
+            FileList['**/*.diff'] + [ "rails/init.rb"]
             [ 'gdb_macros', 'Rakefile' ]
   s.require_path = "lib"
   s.extensions = []

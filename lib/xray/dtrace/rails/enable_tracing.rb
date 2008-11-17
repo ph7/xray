@@ -13,13 +13,13 @@
 #     end  
 #   end
 
-require 'xray/dtrace/tracer'
+require File.expand_path(File.dirname(__FILE__) + '/../tracer')
 if Object.const_defined? :ActionController
   puts "XRay: Enabling Rails Controller Tracing"
-  require "xray/dtrace/rails/action_controller_tracing_extension"
+  require File.expand_path(File.dirname(__FILE__) + "/../rails/action_controller_tracing_extension")
 end
 
 if Object.const_defined? :ActiveRecord
   puts "XRay: Enabling Rails DB Tracing"
-  require "xray/dtrace/rails/active_record_connection_tracing_extension"
+  require File.expand_path(File.dirname(__FILE__) + "/../rails/active_record_connection_tracing_extension")
 end
