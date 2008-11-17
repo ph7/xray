@@ -4,18 +4,19 @@ XRay
 Description
 -----------
 
-  XRay provides a **lightweight yet powerful toolbox for troubleshooting Ruby
-  applications** when things stop making sense. XRay includes:
+  XRay provides a __lightweight yet powerful toolbox for troubleshooting Ruby
+  applications__ when things stop making sense. XRay includes:
 
 * DTrace tooling
 * A thread dump utility that can dump the stack trace 
-  of _all_ the threads in your Ruby VM when you send a +QUIT+ signal.
+  of _all_ the threads in your Ruby VM when you send a `QUIT` signal.
 * GDB intrumentation to inspect C-level and Ruby level at the same time
 
+### Project Websites ###
 
 * Source: [http://github.com/ph7/xray/tree/master](http://github.com/ph7/xray/tree/master)
-* Project: [http://rubyforge.org/projects/xray](http://rubyforge.org/projects/xray)
 * API: [http://xray.rubyforge.org](http://xray.rubyforge.org)
+* Project: [http://rubyforge.org/projects/xray](http://rubyforge.org/projects/xray)
 
 GDB Instrumentation
 -------------------
@@ -29,7 +30,7 @@ GDB Instrumentation
 Thread Dump for _All_ Threads
 -----------------------------
 
-  On any [caller for all threads](http://ph7spot.com/caller_for_all_threads)-enabled 
+  On any [caller for all threads](http://ph7spot.com/articles/caller_for_all_threads)-enabled 
   Ruby interpreter, you can install the XRay signal handler
   to dumping the stack trace for _all_ the threads in your Ruby VM with:
 
@@ -81,7 +82,7 @@ Thread Dump for _All_ Threads
 
   	=============== XRay - Done ===============
       
-  Please refer to the [caller for all threads](http://ph7spot.com/caller_for_all_threads)
+  Please refer to the [caller for all threads](http://ph7spot.com/articles/caller_for_all_threads)
   article for more details.
   
 DTrace
@@ -91,10 +92,10 @@ DTrace
 
   Installed under `/usr/bin`, they all start with `xray_`
 
-  ### Out-of-the-box Rails DTrace Instrumentation ###
+### Out-of-the-box Rails DTrace Instrumentation ###
 
-    You are one require away from triggering automatically DTrace events for 
-    Rails requests, database access and template rendering. As simple as 
+  You are one require away from triggering automatically DTrace events for 
+  Rails requests, database access and template rendering. As simple as 
 
       # environment.rb
       Rails::Initializer.run do |config|
@@ -107,7 +108,7 @@ DTrace
         end  
       end
 
-  If (like me) yo like gem plugins. Or
+  If (like me) you like gem plugins. Or
 
        # environment.rb
        Rails::Initializer.run do |config|
@@ -122,21 +123,29 @@ DTrace
 
   if you prefer tighter control.
 
-  You then get the  following DTrace probes
+  You then get the  following DTrace probes:
+  
+  Probe Name    | `arg0`        | `arg1`                | semantics
+  ------------- | ------------- |-----------------------|--------------------------------------------
+  `ruby-probe`  | request-start | <controller>#<action> | Rails start processing a controller action
+  `ruby-probe`  | request-end   | <controller>#<action> | Rails done processing a controller action
+  `ruby-probe`  | render-start  | <render options>      | Rails rendering starts
+  `ruby-probe`  | render-end    | <controller>#<action> | Rails done rendering
+  `ruby-probe`  | db-start      | <sql query>           | Rails initiates a query to the database
+  `ruby-probe`  | db-end        | <sql query>           | Rails done executing a database query
 
-  See 
-  * `lib/xray/dtrace/rails/enable_tracing.rb`
-  * `lib/xray/dtrace/rails/action_controller_tracing_extension.rb`
-  * `lib/xray/dtrace/rails/active_record_tracing_extension.rb`
+  See [`lib/xray/dtrace/rails`](http://github.com/ph7/xray/tree/master/lib/xray/dtrace/rails)
+  and the bundle [D scripts](http://github.com/ph7/xray/tree/master/bin) for more details.
 
 ### Fire Your Own Application-Specific DTrace Probes ###
 
   See [XRay::DTrace::Tracer](http://github.com/ph7/xray/tree/master/lib/xray/dtrace/tracer.rb)
-  for more details or look at an [custom instrumentation example](http://github.com/ph7/xray/tree/master/examples/dtrace/simple_ruby_script_with_tracer_custom_dtrace_instrumentation.rb).
+  for more details or look at a
+  [an example](http://github.com/ph7/xray/tree/master/examples/dtrace/simple_ruby_script_with_tracer_custom_dtrace_instrumentation.rb).
   
 
 == Author
 
-Philippe Hanrigou,
-http://ph7spot.com
+  Philippe Hanrigou,
+  [http://ph7spot.com](ph7spot.com)
 
