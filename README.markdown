@@ -97,47 +97,40 @@ DTrace
   You are one require away from triggering automatically DTrace events for 
   Rails requests, database access and template rendering. As simple as 
 
-      # environment.rb
-      Rails::Initializer.run do |config|
+    # environment.rb
+    Rails::Initializer.run do |config|
+    
+      config.gem "xray"
+    
+    end
 
-        ...
-
-        config.after_initialize do
-          require "rubygems"
-          require "xray/dtrace/rails/enable_tracing"
-        end  
-      end
 
   If (like me) you like gem plugins. Or
+    
+    # environment.rb
+    Rails::Initializer.run do |config|
+    
+      ...
+    
+      config.after_initialize do
+        require "rubygems"
+        require "xray/dtrace/rails/enable_tracing"
+      end  
+    end
 
-       # environment.rb
-       Rails::Initializer.run do |config|
-
-         config.gem "xray"
-
-       end
 
   if you prefer tighter control.
 
   You then get the  following DTrace probes:
 
-<table>
-  <tr>  
-    <th>Probe Name   </th><th> `arg0`        </th><th> `arg1`                </th><th> semantics </th>
-  <tr></tr>
-    <td>`ruby-probe` </th><th> request-start </th><th> <controller>#<action> </th><th> Rails start processing a controller action</td>
-  </tr><tr>
-    <td>`ruby-probe` </th><th> request-end   </th><th> <controller>#<action> </th><th> Rails done processing a controller action</td>
-  </tr><tr>
-    <td>`ruby-probe` </th><th> render-start  </th><th> <render options>      </th><th> Rails rendering starts</td>
-  </tr><tr>
-    <td>`ruby-probe` </th><th> render-end    </th><th> <controller>#<action> </th><th> Rails done rendering</td>
-  </tr><tr>
-    <td>`ruby-probe` </th><th> db-start      </th><th> <sql query>           </th><th> Rails initiates a query to the database</td>
-  </tr><tr>
-    <td>`ruby-probe` </th><th> db-end        </th><th> <sql query>           </th><th> Rails done executing a database query</td>
-  </tr>
-</table>
+    | Probe Name    | `arg0`         | `arg1`                | Semantics
+    --------------- | -------------- | --------------------- | ------------------------------------------
+    | `ruby-probe`  | request-start  | <controller>#<action> | Rails start processing a controller action
+    | `ruby-probe`  | request-end    | <controller>#<action> | Rails done processing a controller action
+    | `ruby-probe`  | render-start   | <render options>      | Rails rendering starts
+    | `ruby-probe`  | render-end     | <controller>#<action> | Rails done rendering
+    | `ruby-probe`  | db-start       | <sql query>           | Rails initiates a query to the database
+    | `ruby-probe`  | db-end         | <sql query>           | Rails done executing a database query
 
   See [`lib/xray/dtrace/rails`](http://github.com/ph7/xray/tree/master/lib/xray/dtrace/rails)
   and the bundle [D scripts](http://github.com/ph7/xray/tree/master/bin) for more details.
@@ -149,7 +142,8 @@ DTrace
   [an example](http://github.com/ph7/xray/tree/master/examples/dtrace/simple_ruby_script_with_tracer_custom_dtrace_instrumentation.rb).
   
 
-== Author
+Author
+======
 
   Philippe Hanrigou,
   [http://ph7spot.com](ph7spot.com)
