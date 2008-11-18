@@ -1,0 +1,14 @@
+XRay ChangeLog
+==============
+
+
+1.1 - Nov 18 2008
+-----------------
+
+ * Package Rails instrumentation as a gem plugin
+ * Concise API to use dynamic USDT probes with ruby-dtrace gem
+ * Package useful D scripts and samples
+
+ See README file for more details
+ 
+ 
