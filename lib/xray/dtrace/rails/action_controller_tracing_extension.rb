@@ -6,13 +6,13 @@ ActionController::Base.class_eval do
   
   def perform_action_with_tracing
     firing('request', "#{self.class.to_s}##{action_name.to_s}") do
-       perform_action_without_tracing
+      perform_action_without_tracing
     end
   end
 
   def render_with_tracing(options = nil, extra_options = {}, &block) 
     firing('render', options.to_s) do
-       render_without_tracing options, extra_options
+      render_without_tracing options, extra_options, &block
     end
   end
 
